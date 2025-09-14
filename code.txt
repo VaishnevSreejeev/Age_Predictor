@@ -1,0 +1,138 @@
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+import tempfile
+import os
+from voice_predict import AudioPredictor
+
+app = Flask(_name_)
+CORS(app)
+class AudioPredictor:
+    def _init_(self, model_dir='./models/'):
+        """
+        Initializes the predictor by loading all pipeline components.
+        """
+        print("--- Loading pipeline components ---")
+        try:
+            self.model = joblib.load(os.path.join(model_dir, 'final_model.sav'))
+            self.scaler = joblib.load(os.path.join(model_dir, 'scaler.sav'))
+            self.feature_selector = joblib.load(os.path.join(model_dir, 'feature_selector.sav'))
+            self.label_encoder = joblib.load(os.path.join(model_dir, 'label_encoder.sav'))
+            print("All components loaded successfully.")
+            self.is_loaded = True
+        except FileNotFoundError as e:
+            print(f"ERROR: Could not find a model file. {e}")
+            print("Please make sure your .sav files are in the specified directory.")
+            self.is_loaded = False
+
+    # --- FIXED: Use the CORRECT feature extraction function from training ---
+    def extract_features(self, audio_path):
+        """
+        Extracts the exact same features the model was trained on.
+        """
+        try:
+            features = list()
+            audio, _ = librosa.load(audio_path, sr=48000, duration=5)
+
+            # We use a placeholder for gender since it's unknown for a new file.
+            gender_placeholder = 0.0
+
+            spectral_centroid = np.mean(librosa.feature.spectral_centroid(y=audio, sr=48000))
+            spectral_bandwidth = np.mean(librosa.feature.spectral_bandwidth(y=audio, sr=48000))
+            spectral_rolloff = np.mean(librosa.feature.spectral_rolloff(y=audio, sr=48000))
+
+            features.extend([gender_placeholder, spectral_centroid, spectral_bandwidth, spectral_rolloff])
+
+            mfcc = librosa.feature.mfcc(y=audio, sr=48000)
+            for el in mfcc:
+                features.append(np.mean(el))
+
+            return np.array(features).reshape(1, -1)
+        except Exception as e:
+            print(f"Error during feature extraction: {e}")
+            return None
+
+    def predict_age(self, audio_path):
+        """
+        Runs the full prediction pipeline on a single audio file.
+        """
+        if not self.is_loaded:
+            return "Error: Models are not loaded."
+
+        try:
+            # 1. Extract features
+            features = self.extract_features(audio_path)
+            if features is None: return "Feature extraction failed."
+
+            # 2. Scale features
+            features_scaled = self.scaler.transform(features)
+
+            # 3. Select best features
+            features_selected = self.feature_selector.transform(features_scaled)
+
+            # 4. Predict
+            prediction = self.model.predict(features_selected)
+
+            # 5. Decode the label
+            age_group = self.label_encoder.inverse_transform(prediction)[0]
+            return age_group
+        except Exception as e:
+            return f"Error during prediction: {str(e)}"
+
+    def predict_from_file(self, audio_path):
+        """
+        Predicts age from a local audio file.
+        """
+        if not os.path.exists(audio_path):
+            print(f"File not found: {audio_path}")
+            return None
+            
+        print(f"\n--- Processing: {audio_path} ---")
+        age_group = self.predict_age(audio_path)
+        print(f"Predicted Age Group: '{age_group}'")
+        return age_group
+import librosa
+import numpy as np
+import joblib   
+
+
+# Initialize the predictor
+predictor = AudioPredictor(model_dir='./models/')
+
+@app.route('/', methods=['GET'])
+def health_check():
+    return jsonify({'status': 'Backend running', 'models_loaded': predictor.is_loaded}), 200
+
+@app.route('/predict_audio', methods=['POST'])
+def predict_audio():
+    if not predictor.is_loaded:
+        return jsonify({'error': 'Models not loaded'}), 500
+        
+    if 'file' not in request.files:
+        return jsonify({'error': 'No audio file'}), 400
+
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+
+    temp_path = None
+    try:
+        # Save file temporarily
+        temp_path = tempfile.mktemp(suffix='.wav')
+        file.save(temp_path)
+        
+        # Predict using the working predictor
+        age_group = predictor.predict_age(temp_path)
+        
+        if age_group.startswith('Error'):
+            return jsonify({'error': age_group}), 500
+            
+        return jsonify({'age_group': age_group})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if temp_path and os.path.exists(temp_path):
+            os.remove(temp_path)
+
+if _name_ == '_main_':
+    app.run(debug=True, port=5000)
