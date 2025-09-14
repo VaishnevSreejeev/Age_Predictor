@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Age Estimator - Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1 class="dashboard-title">Welcome to Age Estimator</h1>
+    <div id="status" style="color: orange; font-size: 12px; margin: 5px 0;">Checking backend connection...</div>
+    <button class="logout-btn" onclick="window.location.href='index.php'">Logout</button>
+  </header>
+
+  <div class="options-container">
+    <!-- Upload Image -->
+    <div class="option-card circle" onclick="openImageModal()">
+      <img src="assets/upload.png" alt="Upload Image">
+      <span>Upload Image</span>
+    </div>
+
+    <!-- Real-time Face Detection -->
+    <div class="option-card circle" onclick="openCameraModal()">
+      <img src="assets/face.png" alt="Real-time Detection">
+      <span>Real-Time Face Detection</span>
+    </div>
+
+    <!-- Upload Voice -->
+    <div class="option-card circle" onclick="openAudioModal()">
+      <img src="assets/mic.png" alt="Upload Voice">
+      <span>Upload Voice</span>
+    </div>
+
+    <!-- Real-time Voice Detection -->
+    <div class="option-card circle" onclick="openVoiceModal()">
+      <img src="assets/realtime.png" alt="Real-time Voice">
+      <span>Real-Time Voice Detection</span>
+    </div>
+  </div>
+
+  <!-- Image Upload Modal -->
+  <div id="imageModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeImageModal()">&times;</span>
+      <h2>Upload Image</h2>
+
+      <label>Single Image:</label>
+      <input type="file" id="imagePicker" accept="image/*" onchange="previewImage(event)">
+      <img id="uploadedImg" style="display:none; margin-top:15px; border-radius:10px;">
+      <button id="singleImageSubmit" onclick="submitSingleImage()" style="display:none; margin-top:10px;">✅ Predict Age</button>
+
+      <br><br>
+
+      <label>Multiple Images:</label>
+      <input type="file" id="multiImagePicker" accept="image/*" multiple onchange="previewMultipleImages(event)">
+      <div id="multiUploadedImgs" style="display:flex; flex-wrap:wrap; gap:10px; margin-top:15px;"></div>
+
+      <br><br>
+      <button onclick="submitImages()">✅ Submit</button>
+    </div>
+  </div>
+
+  <!-- Camera Modal -->
+  <div id="cameraModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeCameraModal()">&times;</span>
+      <h2>Real-Time Face Detection</h2>
+
+      <div id="cameraContainer">
+        <video id="camera" autoplay playsinline></video>
+        <button onclick="capturePhoto()">📸 Capture Photo</button>
+      </div>
+
+      <div id="capturedContainer" style="display:none;">
+        <img id="capturedImage" style="max-width:100%; border-radius:10px; margin-top:10px;">
+        <br>
+        <button onclick="submitCapturedPhoto()">✅ Submit</button>
+        <button onclick="retryCamera()">🔄 Try Again</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Audio Upload Modal -->
+  <div id="audioModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeAudioModal()">&times;</span>
+      <h2>Upload Audio</h2>
+
+      <label>Single Audio:</label>
+      <input type="file" id="audioPicker" accept="audio/*" onchange="previewAudio(event)">
+      <audio id="uploadedAudio" controls style="display:none; margin-top:15px;"></audio>
+
+      <br><br>
+
+      <label>Multiple Audios:</label>
+      <input type="file" id="multiAudioPicker" accept="audio/*" multiple onchange="previewMultipleAudios(event)">
+      <div id="multiUploadedAudios" style="margin-top:15px;"></div>
+
+      <br><br>
+      <button onclick="submitAudios()">✅ Submit</button>
+    </div>
+  </div>
+
+  <!-- Voice Recording Modal -->
+  <div id="voiceModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeVoiceModal()">&times;</span>
+      <h2>Real-Time Voice Detection</h2>
+      <div id="voiceControls">
+        <button id="startRecordBtn" onclick="startRecording()">🎙 Start Recording</button>
+        <button id="stopRecordBtn" onclick="stopRecording()" style="display:none;">⏹ Stop Recording</button>
+      </div>
+      <div id="recordedContainer" style="display:none; margin-top:15px;">
+        <audio id="audioPlayer" controls></audio>
+        <br>
+        <button onclick="submitVoice()">✅ Submit</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="dashboard.js"></script>
+</body>
+</html>
